@@ -3,3 +3,4 @@
 'weights/resnet50_ft_weight.pkl' filter=lfs diff=lfs merge=lfs -text
 'weights/reresnet50_ft_weight.pkl' filter=lfs diff=lfs merge=lfs -text
 weights/resnet50_ft_weight.pkl filter=lfs diff=lfs merge=lfs -text
+weights/senet50_ft_weight.pkl filter=lfs diff=lfs merge=lfs -text
