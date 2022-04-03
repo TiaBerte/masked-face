@@ -7,7 +7,7 @@ class BarlowTwins(nn.Module):
     def __init__(self, args):
         super().__init__()
         self.args = args
-        self.backbone = torchvision.models.resnet50(zero_init_residual=True)
+        self.backbone = torchvision.models.resnet50(num_classes=8631)#zero_init_residual=True)
         
         self.backbone.fc = nn.Identity()
 

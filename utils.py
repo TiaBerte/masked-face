@@ -27,8 +27,8 @@ def load_state_dict(model, fname):
             except Exception:
                 raise RuntimeError('While copying the parameter named {}, whose dimensions in the model are {} and whose '\
                                    'dimensions in the checkpoint are {}.'.format(name, own_state[name].size(), param.size()))
-        else:
-            raise KeyError('unexpected key "{}" in state_dict'.format(name))
+        #else:
+        #   raise KeyError('unexpected key "{}" in state_dict'.format(name))
 
 
 def get_mean_and_std(dataset: torchvision.datasets.ImageFolder) -> Tuple[float, float]:
