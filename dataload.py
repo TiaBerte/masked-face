@@ -12,7 +12,7 @@ class MaskedFaceDataset(Dataset):
 
     def __init__(self, path, height=244, width=244):        
         def filter_func(folder):
-            return len(os.listdir(path + folder + '/')) >= 27
+            return len(os.listdir(path + folder + '/')) >= 2
 
         self.id_list = list(filter(filter_func, os.listdir(path)))
         self.path = path
