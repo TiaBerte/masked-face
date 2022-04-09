@@ -13,8 +13,8 @@ class MaskedFaceDataset(Dataset):
     def __init__(self, path, height=244, width=244):        
         def filter_func(folder):
             return len(os.listdir(path + folder + '/')) >= 27
-            
-        self.id_list = filter(filter_func, os.listdir(path))
+
+        self.id_list = list(filter(filter_func, os.listdir(path)))
         self.path = path
         self.mean = torch.Tensor([0.5360, 0.4703, 0.4324])  # Dataset mean
         self.std = torch.Tensor([0.2720, 0.2469, 0.2537])  # Dataset std
