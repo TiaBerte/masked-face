@@ -69,7 +69,7 @@ loader_val = DataLoader(val_set, batch_size=size_batch_val,
 #                                        sampler=sampler_val
                                         )
 
-min_loss = 1e4
+min_loss = float('inf')
 
 def main():
     args = parser.parse_args()
@@ -138,43 +138,47 @@ def main_worker(gpu, args):
         #sampler_train.set_epoch(epoch)
 
         data_bar = tqdm(loader_train, desc=f"Train Epoch {epoch}")
-        val_bar = tqdm(loader_val)
-        for step, (y1, y2), (val1, val2) in enumerate(zip(data_bar, val_bar), start=epoch * len(loader_train)):
+        for step, (y1, y2),  in enumerate(zip(data_bar, val_bar), start=epoch * len(loader_train)):
             y1 = y1.cuda(gpu, non_blocking=True)
             y2 = y2.cuda(gpu, non_blocking=True)
-            val1 = val1.cuda(gpu, non_blocking=True)
-            val2 = val2.cuda(gpu, non_blocking=True)
-            print(val1)
             adjust_learning_rate(args, optimizer, loader_train, step)
             optimizer.zero_grad()
             with torch.cuda.amp.autocast():
                 loss = model.forward(y1, y2)
-                val_loss = model.forward(val1, val2)
+
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
-            if step % args.print_freq == 0:
-                if args.rank == 0:
-                    stats = dict(epoch=epoch, step=step,
-                                 lr_weights=optimizer.param_groups[0]['lr'],
-                                 lr_biases=optimizer.param_groups[1]['lr'],
-                                 loss=loss.item(),
-                                 val_loss=val_loss.item(),
-                                 time=int(time.time() - start_time))
-                    print(json.dumps(stats))
-                    print(json.dumps(stats), file=stats_file)
-        if val_loss < min_loss:
-            state = dict(epoch=epoch + 1, model=model.state_dict(),
-                         optimizer=optimizer.state_dict())
-            torch.save(state, args.checkpoint_dir / 'best_checkpoint.pth')
+        
+        # compute val loss
+        val_loss = 0
+        val_bar = tqdm(loader_val)
+        for step, (val1, val2) in enumerate(val_bar):
+            val1 = val1.cuda(gpu, non_blocking=True)
+            val2 = val2.cuda(gpu, non_blocking=True)
+            with torch.cuda.amp.autocast():
+                val_loss += model.forward(val1, val2)
+        val_loss /= len(loader_val)
+
+        # print stats
+        if args.rank == 0:
+            stats = dict(epoch=epoch, step=step,
+                            lr_weights=optimizer.param_groups[0]['lr'],
+                            lr_biases=optimizer.param_groups[1]['lr'],
+                            loss=loss.item(),
+                            val_loss=val_loss.item(),
+                            time=int(time.time() - start_time))
+            print(json.dumps(stats))
+            print(json.dumps(stats), file=stats_file)
+
         if args.rank == 0:
             # save checkpoint
             state = dict(epoch=epoch + 1, model=model.state_dict(),
                          optimizer=optimizer.state_dict())
             torch.save(state, args.checkpoint_dir / 'checkpoint.pth')
-    if args.rank == 0:
-        # save final model
-        torch.save(model.backbone.state_dict(),
-                   args.checkpoint_dir / 'resnet50.pth')
 
+            # save best
+            if val_loss < min_loss:
+                min_loss = val_loss
+                torch.save(state, args.checkpoint_dir / 'best_checkpoint.pth')
 
