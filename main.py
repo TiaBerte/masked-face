@@ -54,22 +54,22 @@ num_workers = 2
 size_batch_train = 64
 size_batch_val = 2 * size_batch_train
 
-sampler_train = torch.utils.data.distributed.DistributedSampler(train_set)
+#sampler_train = torch.utils.data.distributed.DistributedSampler(train_set)
 loader_train = DataLoader(train_set, batch_size=size_batch_train, 
                                         shuffle=True, 
                                         pin_memory=True, 
                                         num_workers=num_workers,
-                                        sampler=sampler_train
+#                                        sampler=sampler_train
                                         )
 
-sampler_val = torch.utils.data.distributed.DistributedSampler(val_set)
+#sampler_val = torch.utils.data.distributed.DistributedSampler(val_set)
 loader_val = DataLoader(val_set, batch_size=size_batch_val, 
                                         shuffle=False,
                                         num_workers=num_workers,
-                                        sampler=sampler_val
+#                                        sampler=sampler_val
                                         )
 
-
+min_loss = 1e4
 
 def main():
     args = parser.parse_args()
@@ -135,16 +135,21 @@ def main_worker(gpu, args):
     start_time = time.time()
     scaler = torch.cuda.amp.GradScaler()
     for epoch in range(start_epoch, args.epochs):
-        sampler_train.set_epoch(epoch)
+        #sampler_train.set_epoch(epoch)
 
         data_bar = tqdm(loader_train, desc=f"Train Epoch {epoch}")
-        for step, (y1, y2) in enumerate(data_bar, start=epoch * len(loader_train)):
+        val_bar = tqdm(loader_val)
+        for step, (y1, y2), (val1, val2) in enumerate(zip(data_bar, val_bar), start=epoch * len(loader_train)):
             y1 = y1.cuda(gpu, non_blocking=True)
             y2 = y2.cuda(gpu, non_blocking=True)
-            adjust_learning_rate(args, optimizer, loader, step)
+            val1 = val1.cuda(gpu, non_blocking=True)
+            val2 = val2.cuda(gpu, non_blocking=True)
+            print(val1)
+            adjust_learning_rate(args, optimizer, loader_train, step)
             optimizer.zero_grad()
             with torch.cuda.amp.autocast():
                 loss = model.forward(y1, y2)
+                val_loss = model.forward(val1, val2)
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
@@ -154,9 +159,14 @@ def main_worker(gpu, args):
                                  lr_weights=optimizer.param_groups[0]['lr'],
                                  lr_biases=optimizer.param_groups[1]['lr'],
                                  loss=loss.item(),
+                                 val_loss=val_loss.item(),
                                  time=int(time.time() - start_time))
                     print(json.dumps(stats))
                     print(json.dumps(stats), file=stats_file)
+        if val_loss < min_loss:
+            state = dict(epoch=epoch + 1, model=model.state_dict(),
+                         optimizer=optimizer.state_dict())
+            torch.save(state, args.checkpoint_dir / 'best_checkpoint.pth')
         if args.rank == 0:
             # save checkpoint
             state = dict(epoch=epoch + 1, model=model.state_dict(),
@@ -164,7 +174,7 @@ def main_worker(gpu, args):
             torch.save(state, args.checkpoint_dir / 'checkpoint.pth')
     if args.rank == 0:
         # save final model
-        torch.save(model.module.backbone.state_dict(),
+        torch.save(model.backbone.state_dict(),
                    args.checkpoint_dir / 'resnet50.pth')
 
 
