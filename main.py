@@ -20,11 +20,11 @@ from dataload import MaskedFaceDataset
 
 
 parser = argparse.ArgumentParser(description='Barlow Twins Training')
-parser.add_argument('--workers', default=8, type=int, metavar='N',
+parser.add_argument('--workers', default=2, type=int, metavar='N',
                 help='number of data loader workers')
 parser.add_argument('--epochs', default=1000, type=int, metavar='N',
                 help='number of total epochs to run')
-parser.add_argument('--batch-size', default=2048, type=int, metavar='N',
+parser.add_argument('--batch-size', default=64, type=int, metavar='N',
                 help='mini-batch size')
 parser.add_argument('--learning-rate-weights', default=0.2, type=float, metavar='LR',
                 help='base learning rate for weights')
@@ -50,24 +50,8 @@ val_path = path + 'val/'
 train_set = MaskedFaceDataset(train_path)
 val_set = MaskedFaceDataset(val_path)
 
-num_workers = 2
-size_batch_train = 64
-size_batch_val = 2 * size_batch_train
-
-#sampler_train = torch.utils.data.distributed.DistributedSampler(train_set)
-loader_train = DataLoader(train_set, batch_size=size_batch_train, 
-                                        shuffle=True, 
-                                        pin_memory=True, 
-                                        num_workers=num_workers,
-#                                        sampler=sampler_train
-                                        )
-
-#sampler_val = torch.utils.data.distributed.DistributedSampler(val_set)
-loader_val = DataLoader(val_set, batch_size=size_batch_val, 
-                                        shuffle=False,
-                                        num_workers=num_workers,
-#                                        sampler=sampler_val
-                                        )
+sampler_train = torch.utils.data.distributed.DistributedSampler(train_set)
+sampler_val = torch.utils.data.distributed.DistributedSampler(val_set)
 
 min_loss = float('inf')
 
@@ -131,11 +115,24 @@ def main_worker(gpu, args):
 
     assert args.batch_size % args.world_size == 0
     per_device_batch_size = args.batch_size // args.world_size
+    loader_train = DataLoader(train_set, batch_size=per_device_batch_size, 
+                                        shuffle=True, 
+                                        pin_memory=True, 
+                                        num_workers=args.workers,
+                                        sampler=sampler_train
+                                        )
+    loader_val = DataLoader(val_set, batch_size=per_device_batch_size, 
+                                        shuffle=False,
+                                        num_workers=args.workers,
+                                        sampler=sampler_val
+                                        )                
+
 
     start_time = time.time()
     scaler = torch.cuda.amp.GradScaler()
     for epoch in range(start_epoch, args.epochs):
-        #sampler_train.set_epoch(epoch)
+        sampler_train.set_epoch(epoch)
+        sampler_val.set_epoch(epoch)
 
         data_bar = tqdm(loader_train, desc=f"Train Epoch {epoch}")
         for step, (y1, y2),  in enumerate(zip(data_bar, val_bar), start=epoch * len(loader_train)):
