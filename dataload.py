@@ -2,7 +2,6 @@ from torch.utils.data import Dataset
 import os
 import random
 from torchvision.io import read_image
-import matplotlib.pyplot as plt
 import torch
 from torchvision import transforms
 
