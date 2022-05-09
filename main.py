@@ -1,8 +1,6 @@
 import torch
-import torchvision
-from torchvision import transforms
 from barlowTwins import BarlowTwins
-from utils import adjust_learning_rate, load_state_dict, get_mean_and_std, LARS
+from utils import adjust_learning_rate, LARS
 from pathlib import Path
 import argparse
 import json
@@ -12,8 +10,6 @@ import signal
 import subprocess
 import time
 from torch import nn
-import torchvision.transforms as transforms
-from torchvision.models import resnet50
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from dataload import MaskedFaceDataset
