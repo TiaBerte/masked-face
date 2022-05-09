@@ -46,9 +46,6 @@ val_path = path + 'val/'
 train_set = MaskedFaceDataset(train_path)
 val_set = MaskedFaceDataset(val_path)
 
-sampler_train = torch.utils.data.distributed.DistributedSampler(train_set)
-sampler_val = torch.utils.data.distributed.DistributedSampler(val_set)
-
 min_loss = float('inf')
 
 def main():
@@ -109,6 +106,8 @@ def main_worker(gpu, args):
     else:
         start_epoch = 0
 
+    sampler_train = torch.utils.data.distributed.DistributedSampler(train_set)
+    sampler_val = torch.utils.data.distributed.DistributedSampler(val_set)
     assert args.batch_size % args.world_size == 0
     per_device_batch_size = args.batch_size // args.world_size
     loader_train = DataLoader(train_set, batch_size=per_device_batch_size, 
