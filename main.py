@@ -174,3 +174,6 @@ def main_worker(gpu, args):
                 min_loss = val_loss
                 torch.save(state, args.checkpoint_dir / 'best_checkpoint.pth')
 
+
+if __name__ == '__main__':
+    main()
