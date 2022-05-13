@@ -130,7 +130,7 @@ def main_worker(gpu, args):
         sampler_val.set_epoch(epoch)
 
         data_bar = tqdm(loader_train, desc=f"Train Epoch {epoch}")
-        for step, (y1, y2),  in enumerate(zip(data_bar, val_bar), start=epoch * len(loader_train)):
+        for step, (y1, y2)  in enumerate(data_bar, start=epoch * len(loader_train)):
             y1 = y1.cuda(gpu, non_blocking=True)
             y2 = y2.cuda(gpu, non_blocking=True)
             adjust_learning_rate(args, optimizer, loader_train, step)
