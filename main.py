@@ -61,8 +61,7 @@ def main():
     host_name = stdout.decode().splitlines()[0]
     args.rank = int(os.getenv('SLURM_NODEID')) * args.ngpus_per_node
     args.world_size = int(os.getenv('SLURM_NNODES')) * args.ngpus_per_node
-    args.dist_url = f'tcp://{host_name}:58472'
-
+    args.dist_url = f'env://'
     torch.multiprocessing.spawn(main_worker, (args,), args.ngpus_per_node)
 
 
@@ -111,13 +110,11 @@ def main_worker(gpu, args):
     assert args.batch_size % args.world_size == 0
     per_device_batch_size = args.batch_size // args.world_size
     loader_train = DataLoader(train_set, batch_size=per_device_batch_size, 
-                                        shuffle=True, 
                                         pin_memory=True, 
                                         num_workers=args.workers,
                                         sampler=sampler_train
                                         )
     loader_val = DataLoader(val_set, batch_size=per_device_batch_size, 
-                                        shuffle=False,
                                         num_workers=args.workers,
                                         sampler=sampler_val
                                         )                
