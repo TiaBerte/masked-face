@@ -16,11 +16,11 @@ from dataload import MaskedFaceDataset
 
 
 parser = argparse.ArgumentParser(description='Barlow Twins Training')
-parser.add_argument('--workers', default=2, type=int, metavar='N',
+parser.add_argument('--workers', default=8, type=int, metavar='N',
                 help='number of data loader workers')
 parser.add_argument('--epochs', default=1000, type=int, metavar='N',
                 help='number of total epochs to run')
-parser.add_argument('--batch-size', default=64, type=int, metavar='N',
+parser.add_argument('--batch-size', default=256, type=int, metavar='N',
                 help='mini-batch size')
 parser.add_argument('--learning-rate-weights', default=0.2, type=float, metavar='LR',
                 help='base learning rate for weights')
@@ -30,7 +30,7 @@ parser.add_argument('--weight-decay', default=1e-6, type=float, metavar='W',
                 help='weight decay')
 parser.add_argument('--lambd', default=0.0051, type=float, metavar='L',
                 help='weight on off-diagonal terms')
-parser.add_argument('--projector', default='8192-8192-8192', type=str)
+parser.add_argument('--projector', default='2048-4096-8192', type=str)
                 #metavar='MLP', help='projector MLP')
 parser.add_argument('--print-freq', default=100, type=int, metavar='N',
                 help='print frequency')
@@ -46,7 +46,6 @@ val_path = path + 'val/'
 train_set = MaskedFaceDataset(train_path)
 val_set = MaskedFaceDataset(val_path)
 
-min_loss = float('inf')
 
 def main():
     args = parser.parse_args()
@@ -64,9 +63,9 @@ def main():
     args.dist_url = f'env://'
     torch.multiprocessing.spawn(main_worker, (args,), args.ngpus_per_node)
 
-
 def main_worker(gpu, args):
     args.rank += gpu
+    print(args.rank)
     torch.distributed.init_process_group(
         backend='nccl', init_method=args.dist_url,
         world_size=args.world_size, rank=args.rank)
@@ -90,6 +89,7 @@ def main_worker(gpu, args):
         else:
             param_weights.append(param)
     parameters = [{'params': param_weights}, {'params': param_biases}]
+    
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
     optimizer = LARS(parameters, lr=0, weight_decay=args.weight_decay,
                      weight_decay_filter=True,
@@ -113,14 +113,15 @@ def main_worker(gpu, args):
                                         pin_memory=True, 
                                         num_workers=args.workers,
                                         sampler=sampler_train
-                                        )
+                            )
     loader_val = DataLoader(val_set, batch_size=per_device_batch_size, 
                                         num_workers=args.workers,
                                         sampler=sampler_val
-                                        )                
+                            )                
 
 
     start_time = time.time()
+    min_loss = float('inf')
     scaler = torch.cuda.amp.GradScaler()
     for epoch in range(start_epoch, args.epochs):
         sampler_train.set_epoch(epoch)
@@ -140,14 +141,18 @@ def main_worker(gpu, args):
             scaler.update()
         
         # compute val loss
-        val_loss = 0
+        val_loss = torch.zeros(1, device=gpu)
         val_bar = tqdm(loader_val)
         for step, (val1, val2) in enumerate(val_bar):
             val1 = val1.cuda(gpu, non_blocking=True)
             val2 = val2.cuda(gpu, non_blocking=True)
             with torch.cuda.amp.autocast():
-                val_loss += model.forward(val1, val2)
+                with torch.no_grad():
+                    val_loss += model.forward(val1, val2)
         val_loss /= len(loader_val)
+        
+        torch.distributed.all_reduce(val_loss)
+        val_loss /= args.world_size
 
         # print stats
         if args.rank == 0:
