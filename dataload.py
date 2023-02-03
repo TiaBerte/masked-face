@@ -7,6 +7,15 @@ from torchvision import transforms
 
 
 
+from torch.utils.data import Dataset
+import os
+import random
+from torchvision.io import read_image
+import torch
+from torchvision import transforms
+
+
+
 class MaskedFaceDataset(Dataset):
 
     def __init__(self, path, height=244, width=244):        
@@ -19,6 +28,30 @@ class MaskedFaceDataset(Dataset):
         self.std = torch.Tensor([0.2720, 0.2469, 0.2537])  # Dataset std
         self.height = height
         self.width = width
+
+
+    def __len__(self):
+        pass
+
+
+    def __getitem__(self, index):
+        pass
+
+
+    def transformation(self, img):
+        
+        normalize = transforms.Normalize(self.mean, self.std)
+        resize = transforms.Resize((self.height, self.width))
+        transform = transforms.Compose([normalize, resize])
+
+        return transform(img)
+
+
+# Data set used for training the network
+class MaskedFaceDatasetTraining(MaskedFaceDataset):
+
+    def __init__(self, path, height=244, width=244):
+        super.__init__(path, height, width)
 
 
     def __len__(self):
@@ -38,12 +71,32 @@ class MaskedFaceDataset(Dataset):
         return self.transformation(img_1), self.transformation(img_2)
 
 
-    def transformation(self, img):
-        
-        normalize = transforms.Normalize(self.mean, self.std)
-        resize = transforms.Resize((self.height, self.width))
-        transform = transforms.Compose([normalize, resize])
+# Dataset used at inference time using the k-nn classifier
+class MaskedFaceDatasetInference(MaskedFaceDataset):
 
-        return transform(img)
+    def __init__(self, path, height=244, width=244):
+        super.__init__(path, height, width)
+        self.img_list = []
+        self.label = []
+        for id in self.id_list:
+            dir_path = self.path + id + '/'
+            imgs = os.listdir(dir_path)
+            for img_name in imgs:
+              self.img_list.append(dir_path + img_name)
+              self.label.append(id)
+
+
+    def __len__(self):
+        return len(self.label)
+
+
+    def __getitem__(self, index):
+
+        id = self.label[index] #str with the name
+        img = read_image(self.img_list[index]).float()/255
+
+        return self.transformation(img), id
+
+
 
 
