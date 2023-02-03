@@ -12,7 +12,7 @@ import time
 from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from dataload import MaskedFaceDataset
+from dataload import MaskedFaceDatasetTraining
 
 
 parser = argparse.ArgumentParser(description='Barlow Twins Training')
@@ -43,8 +43,8 @@ path = './dataset/'
 train_path = path + 'train/'
 val_path = path + 'val/'
 
-train_set = MaskedFaceDataset(train_path)
-val_set = MaskedFaceDataset(val_path)
+train_set = MaskedFaceDatasetTraining(train_path)
+val_set = MaskedFaceDatasetTraining(val_path)
 
 
 def main():
