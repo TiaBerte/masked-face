@@ -1,19 +1,25 @@
 import torch
 from torch import nn
+import torch.nn.functional as F
 import os
-import torchvision
+from resnet50 import resnet50
+import pickle
+
 
 class BarlowTwins(nn.Module):
     def __init__(self, args):
         super().__init__()
         self.args = args
-        self.backbone = torchvision.models.resnet50(num_classes=8631)#zero_init_residual=True)
-        
-        self.backbone.fc = nn.Identity()
+        self.backbone = resnet50(num_classes=8631, include_top=False)
+        with open('./weights/resnet50_ft_weight.pkl', 'rb') as pickle_file:
+            checkpoint = pickle.load(pickle_file)
+
+        checkpoint = {k: torch.as_tensor(v) for k, v in checkpoint.items()}
+        self.backbone.load_state_dict(checkpoint)
 
         # projector
-        sizes = [2048] + list(map(int, args.projector.split('-')))
-        layers = []
+        sizes = [8192] + list(map(int, args.projector.split('-')))
+        layers = [nn.Flatten()]
         for i in range(len(sizes) - 2):
             layers.append(nn.Linear(sizes[i], sizes[i + 1], bias=False))
             layers.append(nn.BatchNorm1d(sizes[i + 1]))
@@ -38,7 +44,6 @@ class BarlowTwins(nn.Module):
         off_diag = off_diagonal(c).pow_(2).sum()
         loss = on_diag + self.args.lambd * off_diag
         return loss
-
 
 def handle_sigusr1(signum, frame):
     os.system(f'scontrol requeue {os.getenv("SLURM_JOB_ID")}')
