@@ -1,13 +1,13 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
 import os
 from resnet50 import resnet50
 import pickle
-
+from argparse import ArgumentParser
 
 class BarlowTwins(nn.Module):
-    def __init__(self, args):
+    def __init__(self, 
+                 args : ArgumentParser.parse_args):
         super().__init__()
         self.args = args
         self.backbone = resnet50(num_classes=8631, include_top=False)
@@ -30,7 +30,9 @@ class BarlowTwins(nn.Module):
         # normalization layer for the representations z1 and z2
         self.bn = nn.BatchNorm1d(sizes[-1], affine=False)
 
-    def forward(self, y1, y2):
+    def forward(self, 
+                y1 : torch.Tensor, 
+                y2 : torch.Tensor) -> float:
         z1 = self.projector(self.backbone(y1))
         z2 = self.projector(self.backbone(y2))
 
