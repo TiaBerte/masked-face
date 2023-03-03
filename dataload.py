@@ -5,20 +5,12 @@ from torchvision.io import read_image
 import torch
 from torchvision import transforms
 
-
-
-from torch.utils.data import Dataset
-import os
-import random
-from torchvision.io import read_image
-import torch
-from torchvision import transforms
-
-
-
 class MaskedFaceDataset(Dataset):
 
-    def __init__(self, path, height=244, width=244):        
+    def __init__(self, 
+                 path : str,
+                 height : int = 244, 
+                 width : int = 244):        
         def filter_func(folder):
             return len(os.listdir(path + folder + '/')) >= 2
 
@@ -34,11 +26,13 @@ class MaskedFaceDataset(Dataset):
         pass
 
 
-    def __getitem__(self, index):
+    def __getitem__(self, 
+                    index : int):
         pass
 
 
-    def transformation(self, img):
+    def transformation(self, 
+                       img : torch.Tensor) -> torch.Tensor:
         
         normalize = transforms.Normalize(self.mean, self.std)
         resize = transforms.Resize((self.height, self.width))
@@ -50,15 +44,19 @@ class MaskedFaceDataset(Dataset):
 # Data set used for training the network
 class MaskedFaceDatasetTraining(MaskedFaceDataset):
 
-    def __init__(self, path, height=244, width=244):
-        super.__init__(path, height, width)
+    def __init__(self, 
+                 path : str, 
+                 height : int = 244, 
+                 width : int = 244):
+        super().__init__(path, height, width)
 
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.id_list)
 
 
-    def __getitem__(self, index):
+    def __getitem__(self, 
+                    index : int) -> tuple[torch.Tensor, torch.Tensor]:
 
         id = self.id_list[index] #str with the name
         dir_path = self.path + id + '/'
@@ -74,10 +72,21 @@ class MaskedFaceDatasetTraining(MaskedFaceDataset):
 # Dataset used at inference time using the k-nn classifier
 class MaskedFaceDatasetInference(MaskedFaceDataset):
 
-    def __init__(self, path, height=244, width=244):
-        super.__init__(path, height, width)
+    def __init__(self, 
+                 path : str, 
+                 height : int = 244, 
+                 width : int = 244, 
+                 id_list : list = None):
+        super().__init__(path, height, width)
         self.img_list = []
         self.label = []
+        if id_list:
+          '''
+          If None id_list is computed from the id in the folder.
+          Otherwise it can be passed so we are sure to have the same 
+          id list in the train and test set of the k-NN.
+          '''
+          self.id_list = id_list
         for id in self.id_list:
             dir_path = self.path + id + '/'
             imgs = os.listdir(dir_path)
@@ -86,16 +95,18 @@ class MaskedFaceDatasetInference(MaskedFaceDataset):
               self.label.append(id)
 
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.label)
 
 
-    def __getitem__(self, index):
+    def __getitem__(self, 
+                    index : int) -> tuple[torch.Tensor, str]:
 
         id = self.label[index] #str with the name
         img = read_image(self.img_list[index]).float()/255
 
         return self.transformation(img), id
+
 
 
 
