@@ -7,5 +7,5 @@ We tested the system only on identities not present in the training set and it w
 
 
 <p align="center">
-<img src="https://user-images.githubusercontent.com/33131887/223077161-3566b698-688c-47cd-94c9-0c92ba26e72e.jpg" width="300" height="300"/> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <img src="https://user-images.githubusercontent.com/33131887/223077161-3566b698-688c-47cd-94c9-0c92ba26e72e.jpg" width="300" height="300"/>
+<img src="https://user-images.githubusercontent.com/33131887/223077611-aa2f4a2c-0ad0-45bb-8622-7f43e0afd041.jpg" width="150" height="150"/> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <img src="https://user-images.githubusercontent.com/33131887/223077161-3566b698-688c-47cd-94c9-0c92ba26e72e.jpg" width="150" height="150"/>
 </p>
