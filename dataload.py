@@ -124,7 +124,8 @@ class MaskedFaceDatasetNewSampler(Dataset):
                  width : int = 244):        
                  
         self.id_list = []
-        for id in os.listdir(path):
+        self.id_listdir = os.listdir(path)
+        for id in self.id_listdir:
             id_path = path + id + '/'
             n_img = len(os.listdir(id_path))
             for _ in range(math.floor(n_img/2)):
@@ -135,7 +136,9 @@ class MaskedFaceDatasetNewSampler(Dataset):
         self.std = torch.Tensor([0.2720, 0.2469, 0.2537])  # Dataset std
         self.height = height
         self.width = width
-        self.past_id = None
+        
+        self.empty_dict()
+
 
     def __len__(self) -> int:
         return len(self.id_list)
@@ -147,18 +150,13 @@ class MaskedFaceDatasetNewSampler(Dataset):
         id = self.id_list[index] #str with the name
         dir_path = self.path + id + '/'
         img_list = os.listdir(dir_path)
-        if self.past_id == id :
-            img_list = list(set(img_list) - set(old_sample))
-        else:
-            old_sample = []
+        img_list = list(set(img_list) - set(self.old_sample[id]))
         img_sampled = random.sample(img_list, 2)
-        self.old_sample.append(img_sampled[0])
-        self.old_sample.append(img_sampled[1])
-        self.past_id = id
+        self.old_sample[id].append(img_sampled[0])
+        self.old_sample[id].append(img_sampled[1])
 
         img_1 = read_image(dir_path + img_sampled[0]).float()/255
         img_2 = read_image(dir_path + img_sampled[1]).float()/255
-
 
         return self.transformation(img_1), self.transformation(img_2)
     
@@ -171,4 +169,8 @@ class MaskedFaceDatasetNewSampler(Dataset):
         transform = transforms.Compose([normalize, resize])
 
         return transform(img)
+    
+
+    def empty_dict(self) -> None:
+        self.old_sample = {id : [] for id in self.id_listdir}
 

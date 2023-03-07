@@ -127,6 +127,8 @@ def main_worker(gpu, args):
         sampler_train.set_epoch(epoch)
         sampler_val.set_epoch(epoch)
 
+        train_set.empty_dict()
+        
         data_bar = tqdm(loader_train, desc=f"Train Epoch {epoch}")
         for step, (y1, y2)  in enumerate(data_bar, start=epoch * len(loader_train)):
             y1 = y1.cuda(gpu, non_blocking=True)
