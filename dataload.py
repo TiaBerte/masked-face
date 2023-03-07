@@ -4,6 +4,7 @@ import random
 from torchvision.io import read_image
 import torch
 from torchvision import transforms
+import math
 
 class MaskedFaceDataset(Dataset):
 
@@ -96,7 +97,7 @@ class MaskedFaceDatasetInference(MaskedFaceDataset):
 
 
     def __len__(self) -> int:
-        return len(self.label)
+        return len(self.id_list)
 
 
     def __getitem__(self, 
@@ -109,5 +110,65 @@ class MaskedFaceDatasetInference(MaskedFaceDataset):
 
 
 
+class MaskedFaceDatasetNewSampler(Dataset):
+    '''
+    This version of dataset tries to exploit all the images in each epoch.
+    In the first version for each epochs, we sampled only a couple of images for
+    each id, now we sample n couple for each id where n is the number of couple
+    that can be obtained sampling from the folder without replacing.
+    '''
 
+    def __init__(self, 
+                 path : str,
+                 height : int = 244, 
+                 width : int = 244):        
+                 
+        self.id_list = []
+        for id in os.listdir(path):
+            id_path = path + id + '/'
+            n_img = len(os.listdir(id_path))
+            for _ in range(math.floor(n_img/2)):
+                self.id_list.append(id)
+
+        self.path = path
+        self.mean = torch.Tensor([0.5360, 0.4703, 0.4324])  # Dataset mean
+        self.std = torch.Tensor([0.2720, 0.2469, 0.2537])  # Dataset std
+        self.height = height
+        self.width = width
+        self.past_id = None
+
+    def __len__(self) -> int:
+        return len(self.id_list)
+
+
+    def __getitem__(self, 
+                    index : int) -> tuple[torch.Tensor, torch.Tensor]:
+
+        id = self.id_list[index] #str with the name
+        dir_path = self.path + id + '/'
+        img_list = os.listdir(dir_path)
+        if self.past_id == id :
+            img_list = list(set(img_list) - set(old_sample))
+        else:
+            old_sample = []
+        img_sampled = random.sample(img_list, 2)
+        self.old_sample.append(img_sampled[0])
+        self.old_sample.append(img_sampled[1])
+        self.past_id = id
+
+        img_1 = read_image(dir_path + img_sampled[0]).float()/255
+        img_2 = read_image(dir_path + img_sampled[1]).float()/255
+
+
+        return self.transformation(img_1), self.transformation(img_2)
+    
+
+    def transformation(self, 
+                       img : torch.Tensor) -> torch.Tensor:
+        
+        normalize = transforms.Normalize(self.mean, self.std)
+        resize = transforms.Resize((self.height, self.width))
+        transform = transforms.Compose([normalize, resize])
+
+        return transform(img)
 
