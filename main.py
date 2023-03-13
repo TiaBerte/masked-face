@@ -12,7 +12,7 @@ import time
 from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from dataload import MaskedFaceDatasetTraining
+from dataload import MaskedFaceDatasetTraining, MaskedFaceDatasetNewSampler
 
 
 parser = argparse.ArgumentParser(description='Barlow Twins Training')
@@ -38,13 +38,9 @@ parser.add_argument('--checkpoint-dir', default='./checkpoint/', type=Path,
                 metavar='DIR', help='path to checkpoint directory')
 parser.add_argument('--backbone_lr', default=0, type=float, 
                 help='Learning rate used for fine tuning the backbone, disabled by default')
+parser.add_argument('--dataset', default='standard', type=str, choices=['standard', 'new_sampler']
+                help='Type of dataset to use')
 
-path = './dataset/'
-train_path = path + 'train/'
-val_path = path + 'val/'
-
-train_set = MaskedFaceDatasetTraining(train_path)
-val_set = MaskedFaceDatasetTraining(val_path)
 
 
 def main():
@@ -69,7 +65,7 @@ def main_worker(gpu, args):
     torch.distributed.init_process_group(
         backend='nccl', init_method=args.dist_url,
         world_size=args.world_size, rank=args.rank)
-
+    
     if args.rank == 0:
         args.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         stats_file = open(args.checkpoint_dir / 'stats.txt', 'a', buffering=1)
@@ -78,6 +74,17 @@ def main_worker(gpu, args):
 
     torch.cuda.set_device(gpu)
     torch.backends.cudnn.benchmark = True
+
+    path = './dataset/'
+    train_path = path + 'train/'
+    val_path = path + 'val/'
+
+    if args.dataset == 'new_sampler':
+        train_set = MaskedFaceDatasetNewSampler(train_path)
+        val_set = MaskedFaceDatasetNewSampler(val_path)
+    else:
+        train_set = MaskedFaceDatasetTraining(train_path)
+        val_set = MaskedFaceDatasetTraining(val_path)
 
     model = BarlowTwins(args).cuda(gpu)
     model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -127,7 +134,8 @@ def main_worker(gpu, args):
         sampler_train.set_epoch(epoch)
         sampler_val.set_epoch(epoch)
 
-        train_set.empty_dict()
+        if isinstance(train_set, MaskedFaceDatasetNewSampler):
+            train_set.empty_dict()
         
         data_bar = tqdm(loader_train, desc=f"Train Epoch {epoch}")
         for step, (y1, y2)  in enumerate(data_bar, start=epoch * len(loader_train)):
