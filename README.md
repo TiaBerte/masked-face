@@ -4,7 +4,7 @@ We proposed a new solution for masked face recognition. [Barlow Twins](https://a
 Our system is composed of a neural network as a feature extractor plus a k-NN as final classifier.  
 For training the system, we used the [MLFW dataset](https://arxiv.org/pdf/2109.05804.pdf).  
 We tested the system only on identities not present in the training set and it was able to reach an accuracy level of 79.72%.  
-A complete description of the whole project can be found in the [report](https://github.com/TiaBerte/masked-face/blob/main/report.pdf)
+A complete description of the whole project can be found in the [report](https://github.com/TiaBerte/masked-face/blob/main/report.pdf).  
 Below you can see samples of the sythetic images present in the MLFW dataset.
 
 <p align="center">
