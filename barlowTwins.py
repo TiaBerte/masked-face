@@ -11,11 +11,13 @@ class BarlowTwins(nn.Module):
         super().__init__()
         self.args = args
         self.backbone = resnet50(num_classes=8631, include_top=False)
-        with open('./weights/resnet50_ft_weight.pkl', 'rb') as pickle_file:
+        
+        if not args.checkpoint_path :
+          with open('./weights/resnet50_ft_weight.pkl', 'rb') as pickle_file:
             checkpoint = pickle.load(pickle_file)
 
-        checkpoint = {k: torch.as_tensor(v) for k, v in checkpoint.items()}
-        self.backbone.load_state_dict(checkpoint)
+            checkpoint = {k: torch.as_tensor(v) for k, v in checkpoint.items()}
+            self.backbone.load_state_dict(checkpoint)
 
         # projector
         sizes = [8192] + list(map(int, args.projector.split('-')))

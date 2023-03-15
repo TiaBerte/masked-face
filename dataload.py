@@ -97,7 +97,7 @@ class MaskedFaceDatasetInference(MaskedFaceDataset):
 
 
     def __len__(self) -> int:
-        return len(self.id_list)
+        return len(self.label)
 
 
     def __getitem__(self, 
